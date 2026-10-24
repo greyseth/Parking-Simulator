@@ -25,6 +25,8 @@ while running:
     carmanager.drawParkingSpaces(screen)
     carmanager.updateCars(screen)
 
+    gm.renderPointerBox()
+
     pg.display.flip()
     gm.updateDeltaTime(clock)
 

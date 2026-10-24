@@ -1,5 +1,6 @@
 import pygame as pg
 
+import gamemanager as gm
 from lib.queue import Queue
 from parkingSpace import ParkingSpace
 
@@ -13,6 +14,9 @@ class Floor:
 
     realSpaces = []
     realSpacesDraw = []
+
+    floorStart = pg.Vector2(0, 0)
+    floorEnd = pg.Vector2(0, 0)
 
     def __init__(self, size: int):
         self.spaces = Queue(5)
@@ -28,6 +32,8 @@ class Floor:
         if self.hasCounted:
             return
         ret = pg.Vector2(0, 0)
+
+        self.floorStart = _initPos
 
         for i in range(self.spaces.size()):
             initPos = pg.Vector2(_initPos.x + i * parkingWidth, _initPos.y)
@@ -65,6 +71,9 @@ class Floor:
                 )
             )
 
+            self.floorEnd = pg.Vector2(
+                initPos.x + parkingWidth, initPos.y + parkingHeight
+            )
             ret = pg.Vector2(initPos.x + parkingWidth, initPos.y + parkingHeight)
 
         self.parkingHeight = parkingHeight
@@ -78,6 +87,30 @@ class Floor:
     def drawSpaces(self, screen):
         if not self.hasCounted:
             return
+
+        # handles mouse hovering detection
+        rectSize = pg.Vector2(
+            self.floorEnd.x - self.floorStart.x, self.floorEnd.y - self.floorStart.y
+        )
+        floorRect = pg.draw.rect(
+            screen,
+            "red",
+            (
+                self.floorStart.x,
+                self.floorStart.y,
+                rectSize.x,
+                rectSize.y,
+            ),
+            3,
+        )
+
+        pp = pg.mouse.get_pos()
+        if floorRect.collidepoint(pp):
+            contentText = "[ "
+            for i, s in enumerate(self.spaces.contents):
+                contentText += f"{s._carId if s is not None else 'None'}{', ' if i < len(self.spaces.contents) - 1 else ''}"
+            contentText += " ]"
+            gm.drawPointerBox(contentText, pp)
 
         for draw in self.realSpacesDraw:
             # Draws parking spot
