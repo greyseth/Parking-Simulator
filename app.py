@@ -1,13 +1,11 @@
 import pygame as pg
 
-import car
 import carmanager
 import gamemanager as gm
-import lib.queue as queue
-import lib.stack as stack
 
 pg.init()
 screen = pg.display.set_mode((1280, 720))
+pg.display.set_caption("Studi Kasus Stack & Queue Statis: Simulasi Parkir Kendaraan")
 clock = pg.time.Clock()
 
 running = True
