@@ -6,12 +6,18 @@ from lib.queue import Queue
 
 
 class ParkingSpace:
+    _parkingId = 1
     occupied = False
     time = 10
+
+    timeCountdown = time
 
     def __init__(
         self, parkPosition: pg.Vector2, floorX: float, floorY: float, queue: Queue
     ):
+        self._parkingId = ParkingSpace._parkingId
+        ParkingSpace._parkingId += 1
+
         self.parkPosition = parkPosition
         self.floorY = floorY
         self.floorX = floorX
@@ -23,6 +29,7 @@ class ParkingSpace:
     def assignCar(self, car: Car):
         self.car = car
         self.occupied = True
+        self.doneParking = False
         car.setDestination(
             pg.Vector2(car.position[0], self.floorY),
             lambda carDestination1: carDestination1.setDestination(
@@ -35,14 +42,29 @@ class ParkingSpace:
             DoDebugRays=True,
         )
 
+    def drawSpaceDetails(self):
+        pg.draw.circle(
+            gm.screen, "red" if self.occupied else "green", self.parkPosition, 5
+        )
+
+        gm.screen.blit(
+            pg.font.SysFont("Arial", 10).render(
+                str(int(self.timeCountdown)), True, (0, 0, 0)
+            ),
+            pg.Vector2(self.parkPosition.x, self.parkPosition.y - 20),
+        )
+
     doneParking = False
 
     def updateSpace(self):
+        self.drawSpaceDetails()
+
         if self.occupied:
             if self.car.isParked:
-                self.time -= gm.dt
-            if self.time <= 0:
-                self.time = 0
+                self.timeCountdown -= gm.dt
+
+            if self.timeCountdown <= 0:
+                self.timeCountdown = self.time
 
                 self.occupied = False
                 self.car.isParked = False

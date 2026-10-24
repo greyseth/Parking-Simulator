@@ -7,6 +7,8 @@ import gamemanager as gm
 
 
 class Car:
+    _carId = 1
+
     position = (0, 0)
     angle = 0
     scaleDivider = 3.5
@@ -21,6 +23,9 @@ class Car:
     debugRays = []
 
     def __init__(self, position, parentContainer, noPlace=False):
+        self._carId = Car._carId
+        Car._carId += 1
+
         try:
             self.position = position
             self.spawnPosition = pg.Vector2(position)
@@ -85,12 +90,22 @@ class Car:
         if self.carImg is None or self.carRect is None:
             return
 
-        self.carRect.center = self.position
+        self.carRect.center = (
+            int(self.position[0]),
+            int(self.position[1]),
+        )  # reconverted because the IDE keeps insisting they're incompatible types
 
         car = pg.transform.rotate(self.carImg, self.angle)
         newRect = car.get_rect(center=self.carRect.center)
 
         screen.blit(car, newRect)
+
+        screen.blit(
+            pg.font.SysFont("Arial", 20).render(
+                "#" + str(self._carId), True, (0, 0, 0)
+            ),
+            pg.Vector2(self.position[0] - 5, self.position[1] - 5),
+        )
 
         # draws bounding box
         if boundingBox:

@@ -14,7 +14,7 @@ class Floor:
     realSpaces = []
     realSpacesDraw = []
 
-    def __init__(self, size: int) -> None:
+    def __init__(self, size: int):
         self.spaces = Queue(5)
 
     def countSpaces(
@@ -90,7 +90,7 @@ class Floor:
             )
 
     def getEmptySpace(self) -> tuple[int, ParkingSpace]:
-        ret = (0, None)
+        ret = (-1, None)
 
         for i, rs in enumerate(self.realSpaces):
             if not rs.occupied:

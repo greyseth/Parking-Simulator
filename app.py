@@ -8,6 +8,8 @@ screen = pg.display.set_mode((1280, 720))
 pg.display.set_caption("Studi Kasus Stack & Queue Statis: Simulasi Parkir Kendaraan")
 clock = pg.time.Clock()
 
+gm.screen = screen
+
 running = True
 while running:
     for event in pg.event.get():
