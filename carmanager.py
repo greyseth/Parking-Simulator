@@ -1,9 +1,16 @@
 import pygame as pg
 
 import car
-import lib.queue as queue
+import gamemanager as gm
+from floor import Floor
 
-floors = [queue.Queue(3), queue.Queue(3), queue.Queue(3)]
+floorWidth = 5
+floors = [
+    Floor(floorWidth),
+    Floor(floorWidth),
+    Floor(floorWidth),
+    Floor(floorWidth, "stack"),
+]
 cars = []
 
 # display settings
@@ -18,102 +25,57 @@ parkingOutlineColor = "black"
 parkingEndCoordinates = pg.Vector2(0, 0)
 carSpawnMargin = 75
 
+hasCountedFloors = False
+
 
 # drawing the parking lot
 def drawParkingSpaces(screen):
-    for floorI, floor in enumerate(floors):
-        for spaceI, space in enumerate(floor.contents):
+    global parkingEndCoordinates, hasCountedFloors
+
+    for floorI, f in enumerate(floors):
+        if not hasCountedFloors:
+            print("loop " + str(floorI))
             initPos = pg.Vector2(
-                windowPadding + spaceI * parkingWidth,
+                windowPadding,
                 windowPadding + floorI * (floorGap + parkingHeight),
             )
 
-            # Points for each line to be drawn
-            leftLinePoints = [
-                initPos,
-                pg.Vector2(
-                    initPos.x, initPos.y + parkingHeight + parkingOutlineWidth / 2
-                ),
-            ]
-            bottomLinePoints = [
-                pg.Vector2(initPos.x, initPos.y + parkingHeight),
-                pg.Vector2(initPos.x + parkingWidth, initPos.y + parkingHeight),
-            ]
-            rightLinePoints = [
-                pg.Vector2(
-                    initPos.x + parkingWidth,
-                    initPos.y + parkingHeight + parkingOutlineWidth / 2,
-                ),
-                pg.Vector2(initPos.x + parkingWidth, initPos.y),
-            ]
+            if floorI == 0:
+                gm.floorStartPos = initPos
 
-            # for car spawning coords
-            global parkingEndCoordinates
-            parkingEndCoordinates = pg.Vector2(
-                initPos.x + parkingWidth, initPos.y + parkingHeight
+            print("counting spaces")
+            temp = f.countSpaces(
+                initPos, parkingHeight, parkingWidth, parkingOutlineWidth, "black"
             )
+            parkingEndCoordinates = parkingEndCoordinates if temp is None else temp
+            gm.floorEndPos = parkingEndCoordinates
 
-            # Draws parking spot
-            pg.draw.lines(
-                screen,
-                parkingOutlineColor,
-                False,
-                [*leftLinePoints, *bottomLinePoints, *rightLinePoints],
-                parkingOutlineWidth,
-            )
+        f.drawSpaces(screen)
 
-    return
+    hasCountedFloors = True
 
 
-def parkCar(floorIndex, spaceIndex, car):
-    floors[floorIndex].changeContent(spaceIndex, car)
-    car.isParked = True
+def spawnCar(f):
+    # UNUSED: determine which closest floor isn't full
+    # floorTargetIndex = next(
+    #     (i for i, f in enumerate(floors) if not f.spaces.isFull()), -1
+    # )
 
-
-def findEmptySpot(index, newCar):
-    spaceTargetIndex = next(
-        (i for i, space in enumerate(floors[index].contents) if space is None),
-        -1,
-    )
-    spaceTargetPos = pg.Vector2(
-        windowPadding + spaceTargetIndex * parkingWidth + parkingWidth / 2,
-        newCar.getPosition().y,
-    )
-
-    newCar.setDestination(
-        spaceTargetPos,
-        lambda c: c.setDestination(
-            pg.Vector2(spaceTargetPos.x, spaceTargetPos.y + parkingHeight / 2),
-            parkCar(index, spaceTargetIndex, c),
-        ),
-    )
-
-
-def spawnCar():
-    if len([c for c in cars if not c.isParked]) > 0:
-        return
-
+    # Chooses floor straight from parameter
     newCar = car.Car(
         (
             parkingEndCoordinates.x + carSpawnMargin,
             parkingEndCoordinates.y + carSpawnMargin,
-        )
+        ),
+        cars,
+        False,
     )
 
-    # determine which closest floor isn't full
-    floorTargetIndex = next(
-        (i for i, floor in enumerate(floors) if not floor.isFull()), -1
-    )
-
-    if floorTargetIndex != -1:
-        floorTargetPos = pg.Vector2(
-            newCar.getPosition().x,
-            windowPadding + floorTargetIndex * (floorGap + parkingHeight),
-        )
-
-        newCar.setDestination(
-            floorTargetPos, lambda c: findEmptySpot(floorTargetIndex, c)
-        )
+    f.spaces.enqueue(newCar)
+    for _, rs in enumerate(f.realSpaces):
+        print(rs._parkingId)
+    _, space = f.getEmptySpace()
+    space.assignCar(newCar)
 
     cars.append(newCar)
 
@@ -121,3 +83,21 @@ def spawnCar():
 def updateCars(screen: pg.Surface):
     for _, c in enumerate(cars):
         c.update(screen)
+
+    for f in floors:
+        # checks for click in floor
+        floorRect = pg.Rect(
+            f.floorStart.x,
+            f.floorStart.y,
+            f.floorEnd.x - f.floorStart.x,
+            f.floorEnd.y - f.floorStart.y,
+        )
+        if (
+            floorRect.collidepoint(pg.mouse.get_pos())
+            and gm.mouse[0]
+            and not f.spaces.isFull()
+        ):
+            spawnCar(f)
+
+        for space in f.realSpaces:
+            space.updateSpace()

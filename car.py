@@ -7,6 +7,8 @@ import gamemanager as gm
 
 
 class Car:
+    _carId = 1
+
     position = (0, 0)
     angle = 0
     scaleDivider = 3.5
@@ -15,9 +17,20 @@ class Car:
     isParked = False
     moveSpeed = 500
 
-    def __init__(self, position):
+    spawnPosition = pg.Vector2(0, 0)
+    retreatWait = 0.5
+
+    debugRays = []
+
+    def __init__(self, position, parentContainer, noPlace=False):
+        self._carId = Car._carId
+        Car._carId += 1
+
         try:
             self.position = position
+            self.spawnPosition = pg.Vector2(position)
+            self.parentContainer = parentContainer
+            self.noPlace = noPlace
 
             rawImg = pg.image.load("./assets/cat.png").convert_alpha()
             self.carImg = pg.transform.scale(
@@ -32,28 +45,43 @@ class Car:
             print(f"Error when loading image: {e}")
             sys.exit()
 
+    def deleteCar(self):
+        self.parentContainer.remove(self)
+
     def update(self, screen: pg.Surface):
         # handles movement
-        if hasattr(self, "destination"):
-            destDistance = pg.Vector2(self.position).distance_to(self.destination)
-            if destDistance > 2:
-                movementDirection = self.destination - pg.Vector2(self.position)
-                remainingDistance = movementDirection.length()
-                movementDirection = movementDirection.normalize()
-                step = self.moveSpeed * gm.dt
+        if not self.noPlace:
+            if hasattr(self, "destination"):
+                destDistance = pg.Vector2(self.position).distance_to(self.destination)
+                if destDistance > 2:
+                    movementDirection = self.destination - pg.Vector2(self.position)
+                    remainingDistance = movementDirection.length()
+                    movementDirection = movementDirection.normalize()
+                    step = self.moveSpeed * gm.dt
 
-                if remainingDistance <= step:
-                    self.position = (self.destination.x, self.destination.y)
+                    if remainingDistance <= step:
+                        self.position = (self.destination.x, self.destination.y)
+                    else:
+                        self.position = (
+                            self.position[0] + movementDirection.x * step,
+                            self.position[1] + movementDirection.y * step,
+                        )
                 else:
-                    self.position = (
-                        self.position[0] + movementDirection.x * step,
-                        self.position[1] + movementDirection.y * step,
-                    )
-            else:
-                del self.destination
+                    del self.destination
 
-                if self.onDestinationReached is not None:
-                    self.onDestinationReached(self)
+                    if self.onDestinationReached is not None:
+                        self.onDestinationReached(self)
+        else:
+            if self.retreatWait > 0:
+                self.retreatWait -= gm.dt
+            else:
+                self.retreatWait = 0
+                self.setDestination(
+                    pg.Vector2(self.spawnPosition.x, self.spawnPosition.y + 100),
+                    lambda c: self.deleteCar(),
+                )
+
+                self.noPlace = False
 
         # renders car
         self.drawCar(screen)
@@ -62,12 +90,22 @@ class Car:
         if self.carImg is None or self.carRect is None:
             return
 
-        self.carRect.center = self.position
+        self.carRect.center = (
+            int(self.position[0]),
+            int(self.position[1]),
+        )  # reconverted because the IDE keeps insisting they're incompatible types
 
         car = pg.transform.rotate(self.carImg, self.angle)
         newRect = car.get_rect(center=self.carRect.center)
 
         screen.blit(car, newRect)
+
+        screen.blit(
+            pg.font.SysFont("Arial", 20).render(
+                "#" + str(self._carId), True, (0, 0, 0)
+            ),
+            pg.Vector2(self.position[0] - 5, self.position[1] - 5),
+        )
 
         # draws bounding box
         if boundingBox:
@@ -83,6 +121,10 @@ class Car:
                 4,
             )
 
+        # draws debug rays
+        for ray in self.debugRays:
+            pg.draw.line(screen, "green", ray[0], ray[1], 2)
+
     def getPosition(self):
         return pg.Vector2(self.position[0], self.position[1])
 
@@ -90,7 +132,11 @@ class Car:
         return self.angle
 
     def setDestination(
-        self, dest: pg.Vector2, onDestinationReached=None, invertedAngle: bool = False
+        self,
+        dest: pg.Vector2,
+        onDestinationReached=None,
+        invertedAngle: bool = False,
+        DoDebugRays=False,
     ):
         self.destination = dest
         self.onDestinationReached = onDestinationReached
@@ -99,3 +145,6 @@ class Car:
         if invertedAngle:
             dir = -dir
         self.angle = math.degrees(math.atan2(dir.y, -dir.x)) + 90
+
+        if DoDebugRays:
+            self.debugRays.append([self.getPosition(), dest])
