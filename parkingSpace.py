@@ -1,9 +1,9 @@
+from collections import deque
+
 import pygame as pg
 
 import gamemanager as gm
 from car import Car
-from lib.queue import Queue
-from lib.stack import Stack
 
 
 class ParkingSpace:
@@ -18,7 +18,8 @@ class ParkingSpace:
         parkPosition: pg.Vector2,
         floorX: float,
         floorY: float,
-        queue: Queue | Stack,
+        queue: deque,
+        floorType: str,
     ):
         self._parkingId = ParkingSpace._parkingId
         ParkingSpace._parkingId += 1
@@ -27,6 +28,19 @@ class ParkingSpace:
         self.floorY = floorY
         self.floorX = floorX
         self.queue = queue
+        self.floorType = floorType
+
+    def canLeave(self):
+        if self.floorType == "stack":
+            # only the top car may leave
+            return len(self.queue) > 0 and self.queue[-1] == self.car
+        return True
+
+    def leave(self):
+        if self.floorType == "queue":
+            self.queue.popleft()
+        else:
+            self.queue.pop()
 
     def parkCar(self, car):
         self.car.isParked = True
@@ -38,7 +52,7 @@ class ParkingSpace:
         self.occupied = True
         self.doneParking = False
 
-        if isinstance(self.queue, Queue):
+        if self.floorType == "queue":
             car.setDestination(
                 pg.Vector2(car.position[0], self.floorY),
                 lambda carDestination1: carDestination1.setDestination(
@@ -80,7 +94,7 @@ class ParkingSpace:
                 self.timeCountdown -= gm.dt
 
             if self.timeCountdown <= 0:
-                if not self.queue.checkCanDequeue(self.car):
+                if not self.canLeave():
                     self.timeCountdown = 0
                     return
 
@@ -88,10 +102,10 @@ class ParkingSpace:
 
                 self.occupied = False
                 self.car.isParked = False
-                self.queue.dequeue()
+                self.leave()
 
                 if not self.doneParking:
-                    if isinstance(self.queue, Queue):
+                    if self.floorType == "queue":
                         self.car.setDestination(
                             pg.Vector2(self.parkPosition.x, self.floorY),
                             lambda carDestination1: carDestination1.setDestination(

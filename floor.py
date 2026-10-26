@@ -1,8 +1,8 @@
+from collections import deque
+
 import pygame as pg
 
 import gamemanager as gm
-from lib.queue import Queue
-from lib.stack import Stack
 from parkingSpace import ParkingSpace
 
 
@@ -17,11 +17,14 @@ class Floor:
     floorEnd = pg.Vector2(0, 0)
 
     def __init__(self, size: int, type: str = "queue"):
-        self.spaces = Queue(size) if type == "queue" else Stack(size)
+        self.capacity = size
+        self.spaces = deque()
         self.type = type
-
         self.realSpaces = []
         self.realSpacesDraw = []
+
+    def isFull(self):
+        return len(self.spaces) >= self.capacity
 
     def countSpaces(
         self,
@@ -35,10 +38,10 @@ class Floor:
         if hasattr(self, "realSpaces"):
             print("initial real spaces: " + str(len(self.realSpaces)))
 
-        if isinstance(self.spaces, Queue):
+        if self.type == "queue":
             # draws parking spot for queue
 
-            for i in range(self.spaces.size()):
+            for i in range(self.capacity):
                 initPos = pg.Vector2(_initPos.x + i * parkingWidth, _initPos.y)
 
                 # Points for each line to be drawn
@@ -71,6 +74,7 @@ class Floor:
                         _initPos.x,
                         _initPos.y,
                         self.spaces,
+                        self.type,
                     )
                 )
 
@@ -85,7 +89,7 @@ class Floor:
             # draw parking lines for stack
             initPos = _initPos
 
-            totalStackWidth = self.spaces.size() * parkingHeight
+            totalStackWidth = self.capacity * parkingHeight
 
             self.realSpacesDraw.append(
                 (
@@ -99,7 +103,7 @@ class Floor:
                     ],
                 )
             )
-            for i in range(self.spaces.size()):
+            for i in range(self.capacity):
                 self.realSpaces.append(
                     ParkingSpace(
                         pg.Vector2(
@@ -109,6 +113,7 @@ class Floor:
                         _initPos.x,
                         _initPos.y + parkingWidth / 2,
                         self.spaces,
+                        self.type,
                     )
                 )
             print("added real spaces initialization: " + str(len(self.realSpaces)))
@@ -143,9 +148,10 @@ class Floor:
 
         pp = pg.mouse.get_pos()
         if floorRect.collidepoint(pp):
+            contents = list(self.spaces) + [None] * (self.capacity - len(self.spaces))
             contentText = "[ "
-            for i, s in enumerate(self.spaces.contents):
-                contentText += f"{f'#{s._carId}' if s is not None else 'None'}{', ' if i < len(self.spaces.contents) - 1 else ''}"
+            for i, s in enumerate(contents):
+                contentText += f"{f'#{s._carId}' if s is not None else 'None'}{', ' if i < len(contents) - 1 else ''}"
             contentText += " ]"
             gm.drawPointerBox(contentText, pp)
 

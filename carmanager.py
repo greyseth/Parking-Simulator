@@ -71,7 +71,7 @@ def spawnCar(f):
         False,
     )
 
-    f.spaces.enqueue(newCar)
+    f.spaces.append(newCar)
     for _, rs in enumerate(f.realSpaces):
         print(rs._parkingId)
     _, space = f.getEmptySpace()
@@ -95,7 +95,7 @@ def updateCars(screen: pg.Surface):
         if (
             floorRect.collidepoint(pg.mouse.get_pos())
             and gm.mouse[0]
-            and not f.spaces.isFull()
+            and not f.isFull()
         ):
             spawnCar(f)
 
