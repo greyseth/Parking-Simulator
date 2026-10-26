@@ -2,10 +2,15 @@ import pygame as pg
 
 import car
 import gamemanager as gm
-import lib.queue as queue
 from floor import Floor
 
-floors = [Floor(3), Floor(3), Floor(3)]
+floorWidth = 5
+floors = [
+    Floor(floorWidth),
+    Floor(floorWidth),
+    Floor(floorWidth),
+    Floor(floorWidth, "stack"),
+]
 cars = []
 
 # display settings
@@ -43,11 +48,15 @@ def drawParkingSpaces(screen):
     return
 
 
-def spawnCar():
-    # determine which closest floor isn't full
-    floorTargetIndex = next(
-        (i for i, f in enumerate(floors) if not f.spaces.isFull()), -1
-    )
+def spawnCar(floor):
+    # UNUSED: determine which closest floor isn't full
+    # floorTargetIndex = next(
+    #     (i for i, f in enumerate(floors) if not f.spaces.isFull()), -1
+    # )
+    #
+
+    # Chooses floor straight from parameter
+    floorTargetIndex = floors.index(floor)
 
     newCar = car.Car(
         (
@@ -71,5 +80,15 @@ def updateCars(screen: pg.Surface):
         c.update(screen)
 
     for f in floors:
+        # checks for click in floor
+        floorRect = pg.Rect(
+            f.floorStart.x,
+            f.floorStart.y,
+            f.floorEnd.x - f.floorStart.x,
+            f.floorEnd.y - f.floorStart.y,
+        )
+        if floorRect.collidepoint(pg.mouse.get_pos()) and gm.mouse[0]:
+            spawnCar(f)
+
         for space in f.realSpaces:
             space.updateSpace()

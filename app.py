@@ -12,13 +12,15 @@ gm.screen = screen
 
 running = True
 while running:
+    for i in range(len(gm.mouse)):
+        gm.mouse[i] = False
+
     for event in pg.event.get():
         if event.type == pg.QUIT:
             running = False
 
-        if event.type == pg.KEYDOWN:
-            if event.key == pg.K_SPACE:
-                carmanager.spawnCar()
+        if event.type == pg.MOUSEBUTTONDOWN:
+            gm.mouse[event.button - 1] = True
 
     screen.fill("white")
 

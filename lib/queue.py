@@ -36,13 +36,14 @@ class Queue:
         return self.contents
 
     def enqueue(self, new):
-        firstNoneIndex = 0
+        firstNoneIndex = -1
         for i, c in enumerate(self.contents):
             if c is None:
                 firstNoneIndex = i
                 break
 
-        self.contents[firstNoneIndex] = new
+        if firstNoneIndex != -1:
+            self.contents[firstNoneIndex] = new
 
     def dequeue(self):
         ret = self.contents[0]
@@ -57,6 +58,9 @@ class Queue:
 
         self.contents = newContents
         return ret
+
+    def checkCanDequeue(self, content=None, index: int = -1):
+        return True
 
     def peek(self):
         return self.contents[0]

@@ -2,6 +2,7 @@ import pygame as pg
 
 import gamemanager as gm
 from lib.queue import Queue
+from lib.stack import Stack
 from parkingSpace import ParkingSpace
 
 
@@ -18,8 +19,9 @@ class Floor:
     floorStart = pg.Vector2(0, 0)
     floorEnd = pg.Vector2(0, 0)
 
-    def __init__(self, size: int):
-        self.spaces = Queue(5)
+    def __init__(self, size: int, type: str = "queue"):
+        self.spaces = Queue(size) if type == "queue" else Stack(size)
+        self.type = type
 
     def countSpaces(
         self,
@@ -30,59 +32,98 @@ class Floor:
         parkingOutlineColor,
     ):
         if self.hasCounted:
-            return
-        ret = pg.Vector2(0, 0)
+            return pg.Vector2(0, 0)
 
         self.floorStart = _initPos
 
-        for i in range(self.spaces.size()):
-            initPos = pg.Vector2(_initPos.x + i * parkingWidth, _initPos.y)
+        if isinstance(self.spaces, Queue):
+            # draws parking spot for queue
 
-            # Points for each line to be drawn
-            leftLinePoints = [
-                initPos,
-                pg.Vector2(
-                    initPos.x, initPos.y + parkingHeight + parkingOutlineWidth / 2
-                ),
-            ]  # left line
-            bottomLinePoints = [
-                pg.Vector2(initPos.x, initPos.y + parkingHeight),
-                pg.Vector2(initPos.x + parkingWidth, initPos.y + parkingHeight),
-            ]  # bottom line
-            rightLinePoints = [
-                pg.Vector2(
-                    initPos.x + parkingWidth,
-                    initPos.y + parkingHeight + parkingOutlineWidth / 2,
-                ),
-                pg.Vector2(initPos.x + parkingWidth, initPos.y),
-            ]  # right line
+            for i in range(self.spaces.size()):
+                initPos = pg.Vector2(_initPos.x + i * parkingWidth, _initPos.y)
+
+                # Points for each line to be drawn
+                leftLinePoints = [
+                    initPos,
+                    pg.Vector2(
+                        initPos.x, initPos.y + parkingHeight + parkingOutlineWidth / 2
+                    ),
+                ]  # left line
+                bottomLinePoints = [
+                    pg.Vector2(initPos.x, initPos.y + parkingHeight),
+                    pg.Vector2(initPos.x + parkingWidth, initPos.y + parkingHeight),
+                ]  # bottom line
+                rightLinePoints = [
+                    pg.Vector2(
+                        initPos.x + parkingWidth,
+                        initPos.y + parkingHeight + parkingOutlineWidth / 2,
+                    ),
+                    pg.Vector2(initPos.x + parkingWidth, initPos.y),
+                ]  # right line
+
+                self.realSpacesDraw.append(
+                    (leftLinePoints, bottomLinePoints, rightLinePoints)
+                )
+                self.realSpaces.append(
+                    ParkingSpace(
+                        pg.Vector2(
+                            initPos.x + parkingWidth / 2, initPos.y + parkingHeight / 2
+                        ),
+                        _initPos.x,
+                        _initPos.y,
+                        self.spaces,
+                    )
+                )
+
+                self.floorEnd = pg.Vector2(
+                    initPos.x + parkingWidth, initPos.y + parkingHeight
+                )
+
+                self.parkingHeight = parkingHeight
+                self.parkingWidth = parkingWidth
+        else:
+            # draw parking lines for stack
+            initPos = _initPos
+
+            totalStackWidth = self.spaces.size() * parkingHeight
 
             self.realSpacesDraw.append(
-                (leftLinePoints, bottomLinePoints, rightLinePoints)
-            )
-            self.realSpaces.append(
-                ParkingSpace(
-                    pg.Vector2(
-                        initPos.x + parkingWidth / 2, initPos.y + parkingHeight / 2
-                    ),
-                    _initPos.x,
-                    _initPos.y,
-                    self.spaces,
+                (
+                    [initPos, pg.Vector2(initPos.x + totalStackWidth, initPos.y)],
+                    [initPos, pg.Vector2(initPos.x, initPos.y + parkingWidth)],
+                    [
+                        pg.Vector2(initPos.x, initPos.y + parkingWidth),
+                        pg.Vector2(
+                            initPos.x + totalStackWidth, initPos.y + parkingWidth
+                        ),
+                    ],
                 )
             )
+            for i in range(self.spaces.size()):
+                self.realSpaces.append(
+                    ParkingSpace(
+                        pg.Vector2(
+                            initPos.x + (parkingHeight / 2) + (i * parkingHeight),
+                            initPos.y + parkingWidth / 2,
+                        ),
+                        _initPos.x,
+                        _initPos.y + parkingWidth / 2,
+                        self.spaces,
+                    )
+                )
 
             self.floorEnd = pg.Vector2(
-                initPos.x + parkingWidth, initPos.y + parkingHeight
+                initPos.x + totalStackWidth, initPos.y + parkingWidth
             )
-            ret = pg.Vector2(initPos.x + parkingWidth, initPos.y + parkingHeight)
 
-        self.parkingHeight = parkingHeight
-        self.parkingWidth = parkingWidth
+            self.parkingWidth = parkingHeight
+            self.parkingHeight = parkingWidth
+
         self.parkingOutlineWidth = parkingOutlineWidth
         self.parkingOutlineColor = parkingOutlineColor
 
         self.hasCounted = True
-        return ret
+        return self.floorEnd
 
     def drawSpaces(self, screen):
         if not self.hasCounted:
@@ -92,23 +133,18 @@ class Floor:
         rectSize = pg.Vector2(
             self.floorEnd.x - self.floorStart.x, self.floorEnd.y - self.floorStart.y
         )
-        floorRect = pg.draw.rect(
-            screen,
-            "red",
-            (
-                self.floorStart.x,
-                self.floorStart.y,
-                rectSize.x,
-                rectSize.y,
-            ),
-            3,
+        floorRect = pg.Rect(
+            self.floorStart.x,
+            self.floorStart.y,
+            rectSize.x,
+            rectSize.y,
         )
 
         pp = pg.mouse.get_pos()
         if floorRect.collidepoint(pp):
             contentText = "[ "
             for i, s in enumerate(self.spaces.contents):
-                contentText += f"{s._carId if s is not None else 'None'}{', ' if i < len(self.spaces.contents) - 1 else ''}"
+                contentText += f"{f'#{s._carId}' if s is not None else 'None'}{', ' if i < len(self.spaces.contents) - 1 else ''}"
             contentText += " ]"
             gm.drawPointerBox(contentText, pp)
 

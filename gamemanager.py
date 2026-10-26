@@ -8,6 +8,8 @@ screen: pg.Surface
 renderBox = None
 renderBoxPosition = (0, 0)
 
+mouse = [False, False, False]
+
 
 def updateDeltaTime(clock):
     global dt

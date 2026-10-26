@@ -3,6 +3,7 @@ import pygame as pg
 import gamemanager as gm
 from car import Car
 from lib.queue import Queue
+from lib.stack import Stack
 
 
 class ParkingSpace:
@@ -13,7 +14,11 @@ class ParkingSpace:
     timeCountdown = time
 
     def __init__(
-        self, parkPosition: pg.Vector2, floorX: float, floorY: float, queue: Queue
+        self,
+        parkPosition: pg.Vector2,
+        floorX: float,
+        floorY: float,
+        queue: Queue | Stack,
     ):
         self._parkingId = ParkingSpace._parkingId
         ParkingSpace._parkingId += 1
@@ -27,20 +32,31 @@ class ParkingSpace:
         self.car.isParked = True
 
     def assignCar(self, car: Car):
+        self.carInitialPosition = car.position
+
         self.car = car
         self.occupied = True
         self.doneParking = False
-        car.setDestination(
-            pg.Vector2(car.position[0], self.floorY),
-            lambda carDestination1: carDestination1.setDestination(
-                pg.Vector2(self.parkPosition.x, self.floorY),
-                lambda carDestination2: carDestination2.setDestination(
-                    self.parkPosition, self.parkCar, DoDebugRays=True
+
+        if isinstance(self.queue, Queue):
+            car.setDestination(
+                pg.Vector2(car.position[0], self.floorY),
+                lambda carDestination1: carDestination1.setDestination(
+                    pg.Vector2(self.parkPosition.x, self.floorY),
+                    lambda carDestination2: carDestination2.setDestination(
+                        self.parkPosition, self.parkCar, DoDebugRays=False
+                    ),
+                    DoDebugRays=False,
                 ),
-                DoDebugRays=True,
-            ),
-            DoDebugRays=True,
-        )
+                DoDebugRays=False,
+            )
+        else:
+            car.setDestination(
+                pg.Vector2(car.position[0], self.floorY),
+                lambda carDestination1: carDestination1.setDestination(
+                    pg.Vector2(self.parkPosition.x, self.parkPosition.y), self.parkCar
+                ),
+            )
 
     def drawSpaceDetails(self):
         pg.draw.circle(
@@ -64,6 +80,10 @@ class ParkingSpace:
                 self.timeCountdown -= gm.dt
 
             if self.timeCountdown <= 0:
+                if not self.queue.checkCanDequeue(self.car):
+                    self.timeCountdown = 0
+                    return
+
                 self.timeCountdown = self.time
 
                 self.occupied = False
@@ -71,21 +91,48 @@ class ParkingSpace:
                 self.queue.dequeue()
 
                 if not self.doneParking:
-                    self.car.setDestination(
-                        pg.Vector2(self.parkPosition.x, self.floorY),
-                        lambda carDestination1: carDestination1.setDestination(
-                            pg.Vector2(self.floorX - 50, self.floorY),
-                            lambda carDestination2: carDestination2.setDestination(
-                                pg.Vector2(gm.floorStartPos.x - 50, gm.floorEndPos.y),
-                                lambda carDestinationReached: (
-                                    carDestinationReached.deleteCar()
+                    if isinstance(self.queue, Queue):
+                        self.car.setDestination(
+                            pg.Vector2(self.parkPosition.x, self.floorY),
+                            lambda carDestination1: carDestination1.setDestination(
+                                pg.Vector2(self.floorX - 50, self.floorY),
+                                lambda carDestination2: carDestination2.setDestination(
+                                    pg.Vector2(
+                                        gm.floorStartPos.x - 50, gm.floorEndPos.y
+                                    ),
+                                    lambda carDestinationReached: (
+                                        carDestinationReached.deleteCar()
+                                    ),
+                                    DoDebugRays=False,
                                 ),
-                                DoDebugRays=True,
+                                DoDebugRays=False,
                             ),
-                            DoDebugRays=True,
-                        ),
-                        True,
-                        True,
-                    )
+                            False,
+                            False,
+                        )
+                    else:
+                        self.car.setDestination(
+                            pg.Vector2(self.carInitialPosition[0], self.parkPosition.y),
+                            lambda carDestination1: carDestination1.setDestination(
+                                pg.Vector2(
+                                    self.carInitialPosition[0], self.parkPosition.y - 50
+                                ),
+                                lambda carDestination2: carDestination2.setDestination(
+                                    pg.Vector2(
+                                        self.floorX - 50, self.parkPosition.y - 50
+                                    ),
+                                    lambda carDestination3: (
+                                        carDestination3.setDestination(
+                                            pg.Vector2(
+                                                self.floorX - 50, gm.floorEndPos.y
+                                            ),
+                                            lambda carDestinationReached: (
+                                                carDestinationReached.deleteCar()
+                                            ),
+                                        )
+                                    ),
+                                ),
+                            ),
+                        )
 
                     self.doneParking = True
