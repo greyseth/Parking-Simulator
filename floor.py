@@ -13,15 +13,15 @@ class Floor:
     parkingOutlineWidth = 0
     parkingOutlineColor = "black"
 
-    realSpaces = []
-    realSpacesDraw = []
-
     floorStart = pg.Vector2(0, 0)
     floorEnd = pg.Vector2(0, 0)
 
     def __init__(self, size: int, type: str = "queue"):
         self.spaces = Queue(size) if type == "queue" else Stack(size)
         self.type = type
+
+        self.realSpaces = []
+        self.realSpacesDraw = []
 
     def countSpaces(
         self,
@@ -31,10 +31,9 @@ class Floor:
         parkingOutlineWidth,
         parkingOutlineColor,
     ):
-        if self.hasCounted:
-            return pg.Vector2(0, 0)
-
         self.floorStart = _initPos
+        if hasattr(self, "realSpaces"):
+            print("initial real spaces: " + str(len(self.realSpaces)))
 
         if isinstance(self.spaces, Queue):
             # draws parking spot for queue
@@ -81,6 +80,7 @@ class Floor:
 
                 self.parkingHeight = parkingHeight
                 self.parkingWidth = parkingWidth
+            print("added real spaces initialization: " + str(len(self.realSpaces)))
         else:
             # draw parking lines for stack
             initPos = _initPos
@@ -111,6 +111,7 @@ class Floor:
                         self.spaces,
                     )
                 )
+            print("added real spaces initialization: " + str(len(self.realSpaces)))
 
             self.floorEnd = pg.Vector2(
                 initPos.x + totalStackWidth, initPos.y + parkingWidth
@@ -162,6 +163,7 @@ class Floor:
         ret = (-1, None)
 
         for i, rs in enumerate(self.realSpaces):
+            print(f"Checking: {rs._parkingId}")
             if not rs.occupied:
                 ret = (i, rs)
                 break
